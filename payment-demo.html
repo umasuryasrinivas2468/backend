@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashfree Payment Integration Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cashfree Payment Integration Demo</h1>
+    
+    <div class="container">
+        <h2>Create Order</h2>
+        <div class="form-group">
+            <label for="amount">Amount</label>
+            <input type="number" id="amount" value="1000" min="1">
+        </div>
+        <div class="form-group">
+            <label for="customerId">Customer ID</label>
+            <input type="text" id="customerId" value="cust123">
+        </div>
+        <div class="form-group">
+            <label for="productId">Product ID (Optional)</label>
+            <input type="text" id="productId" value="prod456">
+        </div>
+        <button id="createOrderBtn">Create Order</button>
+    </div>
+    
+    <div id="response"></div>
+    
+    <!-- Cashfree SDK will be loaded dynamically -->
+    <script>
+        // Function to load the Cashfree SDK
+        function loadCashfreeSDK(url) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.body.appendChild(script);
+            });
+        }
+        
+        // Initialize Cashfree SDK
+        async function initCashfree() {
+            try {
+                // Fetch configuration from our backend
+                const configResponse = await fetch('/api/payment-config');
+                const config = await configResponse.json();
+                
+                // Load the Cashfree SDK
+                await loadCashfreeSDK(config.sdkUrl);
+                
+                // Initialize Cashfree
+                window.cashfree = Cashfree({
+                    mode: config.environment
+                });
+                
+                console.log('Cashfree SDK initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize Cashfree SDK:', error);
+            }
+        }
+        
+        // Create an order
+        async function createOrder() {
+            const amount = document.getElementById('amount').value;
+            const customerId = document.getElementById('customerId').value;
+            const productId = document.getElementById('productId').value;
+            
+            const responseElement = document.getElementById('response');
+            responseElement.textContent = 'Creating order...';
+            
+            try {
+                const response = await fetch('/api/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: parseFloat(amount),
+                        customerId,
+                        productId
+                    })
+                });
+                
+                const result = await response.json();
+                responseElement.textContent = JSON.stringify(result, null, 2);
+                
+                // In a real implementation, you would use the payment session ID
+                // to render the payment component using Cashfree SDK
+                if (result.success && window.cashfree) {
+                    console.log('Ready to render payment component with session ID:', 
+                        result.data.paymentSession.payment_session_id);
+                    
+                    // Example of how you would render the payment component:
+                    /*
+                    cashfree.drop(result.data.paymentSession.payment_session_id, {
+                        components: [
+                            "order-details",
+                            "card",
+                            "upi",
+                            "netbanking",
+                            "app",
+                            "paylater"
+                        ],
+                        onSuccess: function(data) {
+                            console.log("Payment success", data);
+                        },
+                        onFailure: function(data) {
+                            console.log("Payment failure", data);
+                        }
+                    });
+                    */
+                }
+            } catch (error) {
+                responseElement.textContent = `Error: ${error.message}`;
+                console.error('Error creating order:', error);
+            }
+        }
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Cashfree SDK
+            initCashfree();
+            
+            // Add event listener to the create order button
+            document.getElementById('createOrderBtn').addEventListener('click', createOrder);
+        });
+    </script>
+</body>
+</html> 
