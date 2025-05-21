@@ -117,7 +117,9 @@ app.post('/api/create-order', async (req, res) => {
     
     // Get Clerk session token from Authorization header
     const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace('Bearer ', ''); 
+
+  //demo by dev
     
     if (token) {
       console.log('Fetching user info from Clerk...');
