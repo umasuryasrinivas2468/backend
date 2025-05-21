@@ -28,9 +28,28 @@ const CLERK_API_URL = "https://api.clerk.dev/v1/me";
 // Middleware
 // Configure CORS to allow requests from frontend
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001'],
-  methods: ['GET', 'POST'],
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:8080', 
+      'http://localhost:3000', 
+      'http://localhost:5173', 
+      'http://localhost:3001',
+      'http://192.168.1.2:8080'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, origin);
+    } else {
+      console.log('Origin not allowed by CORS:', origin);
+      return callback(null, allowedOrigins[0]); // Default to first allowed origin
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
@@ -191,12 +210,16 @@ app.post('/api/create-order', async (req, res) => {
     
     await storeTransactionInSupabase(transactionData);
     
+    // Get payment session ID from Cashfree response
+    const paymentSessionId = response.data.payment_session_id || "";
+    
     // Create simplified response with just the essential data
     const responseData = {
       order_id: orderId,
       amount: parseFloat(amount),
       currency: "INR",
       upi_link: upiPaymentLink,
+      payment_session_id: paymentSessionId,
       status: "ACTIVE"
     };
     
